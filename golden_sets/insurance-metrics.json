@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Task Completion",
+    "description": "Did the answer actually answer the question, judged against the reference key points in Context?",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 0,
+    "tags": ["insurance", "judge-benchmark"],
+    "defaultThreshold": { "score": 3, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "No attempt",       "order": 0, "description": "No attempt, or off-topic. Judge only whether the question was answered, not whether it was formatted or factually right. If the REFERENCE ANSWER in Context says a refusal is the correct response and the answer instead rambled off-topic, score 1." },
+      { "score": 2, "label": "Misses core",       "order": 1, "description": "Addresses the topic but misses the core answer stated in the REFERENCE ANSWER. Also score at most 2 if the REFERENCE ANSWER calls for a refusal (question is outside the indexed corpus) but the answer attempted a substantive answer instead of refusing." },
+      { "score": 3, "label": "Core, incomplete",  "order": 2, "description": "Core answer is present but incomplete versus the REFERENCE ANSWER key points (e.g. gives the main fact but omits a secondary one). Boundary case — still passes." },
+      { "score": 4, "label": "All key points",    "order": 3, "description": "All reference key points are covered." },
+      { "score": 5, "label": "Precise",           "order": 4, "description": "All key points, precise, with no extraneous claims. A correct refusal, when the REFERENCE ANSWER says a refusal is correct, also scores 5." }
+    ]
+  },
+  {
+    "name": "Format Adherence",
+    "description": "Does the response follow the policy-assistant output template? Judge format only, never correctness.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 1,
+    "tags": ["insurance", "judge-benchmark"],
+    "defaultThreshold": { "score": 1, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 0, "label": "Fail", "order": 0, "description": "The response breaks the output template. The template requires ALL of: (a) every factual claim carries an inline citation of the form '(clause_ref — policy_name)', e.g. '(SJB cl.7 — Saral Jeevan Bima Standard Term Life Policy)'; (b) the response ends with the exact disclaimer footer: '*This is not financial or medical advice. Your actual policy document supersedes any general wording. For specific claims or coverage queries, contact your insurer.*'; (c) if the answer cannot be supported by the corpus, it must be EXACTLY the refusal string: 'I cannot answer based on the indexed policy wordings. The clause may not be covered, or this question may fall outside the policies in this corpus. Please refer to your actual policy document or speak to your insurer.' Score 0 if any applicable rule is violated. Do NOT judge factual correctness here — a factually wrong but correctly-formatted answer still passes format. Citing the WRONG clause number is NOT a format problem (that belongs to Factuality); only a missing or malformed citation pattern, a missing/altered disclaimer footer, or wrong refusal wording counts as a format failure." },
+      { "score": 1, "label": "Pass", "order": 1, "description": "All applicable template rules are met: the inline citation pattern '(clause_ref — policy_name)' is present on factual claims and the exact disclaimer footer is present — OR, when refusing, the response is exactly the required refusal string. Correctness of the content is irrelevant to this score." }
+    ]
+  },
+  {
+    "name": "Factuality",
+    "description": "Are the claims accurate and grounded in the corpus, free of hallucination? Compare to the REFERENCE ANSWER / EXPECTED CITATIONS in Context.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 2,
+    "tags": ["insurance", "judge-benchmark"],
+    "defaultThreshold": { "score": 4, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "Completely inaccurate", "order": 0, "description": "Blatant fabrication: cites a policy or clause outside the three-document corpus (Saral Jeevan Bima / Saral Suraksha Bima / Arogya Sanjeevani), or invents a product or benefit. If the REFERENCE ANSWER says the corpus cannot answer (a refusal is correct) and the answer fabricated a substantive answer, score 1." },
+      { "score": 2, "label": "Mostly inaccurate",     "order": 1, "description": "Invents figures, limits or terms that are not supported by the REFERENCE ANSWER or the corpus, without wholesale fabrication of a document." },
+      { "score": 3, "label": "Partially accurate",    "order": 2, "description": "Subtly wrong (boundary — fails): a wrong number, the right fact attributed to the WRONG clause number, or a correct statement with one incorrect detail appended. Note: citing the wrong clause number counts HERE (Factuality); a missing citation pattern does NOT (that is Format)." },
+      { "score": 4, "label": "Mostly accurate",       "order": 3, "description": "Mostly accurate (boundary — passes): only a minor imprecision such as rounding or a loose paraphrase; all material claims agree with the REFERENCE ANSWER." },
+      { "score": 5, "label": "Completely accurate",   "order": 4, "description": "All claims are correct and grounded, matching the REFERENCE ANSWER, and any cited clauses are the correct ones. A correct refusal, when the REFERENCE ANSWER says a refusal is correct, also scores 5." }
+    ]
+  }
+]
