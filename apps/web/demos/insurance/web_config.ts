@@ -34,6 +34,11 @@ const config: DemoConfig = {
   ],
   refusalBanner: "This question is not addressed in the indexed policy wordings.",
   guardBanner: "This may involve an exclusion or waiting period — verify against the cited clause.",
+  datasets: [
+    { label: "Golden" },
+    { label: "TryEval Live",        version: "tryeval-live" },
+    { label: "TryEval Calibration", version: "tryeval-calibration" },
+  ],
 }
 
 export default config
