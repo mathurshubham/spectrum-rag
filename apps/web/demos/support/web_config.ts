@@ -59,6 +59,11 @@ const config: DemoConfig = {
   ],
   refusalBanner: "Outside the support knowledge base — routed to a human agent.",
   guardBanner: "Conversation routed to a human agent.",
+  datasets: [
+    { label: "Golden" },
+    { label: "TryEval Live",        version: "tryeval-live" },
+    { label: "TryEval Calibration", version: "tryeval-calibration" },
+  ],
 }
 
 export default config
