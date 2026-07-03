@@ -1289,7 +1289,7 @@ def verify_cal(rows: list[dict]):
         assert set(r) == set(TRYEVAL_CAL_FIELDS), f"unexpected cal columns: {set(r)}"
         assert r["output"].strip(), "empty output (direct-eval needs a filled output)"
         assert "REFERENCE ANSWER:" in r["eval_context"], "reference not packed into eval_context"
-    print("VERIFY CAL OK — 200 direct-eval rows; gold stripped (join gold on input+output).")
+    print("VERIFY CAL OK — 200 direct-eval rows; output pre-filled, gold LABELS stripped (join gold on input+output).")
 
 
 def main():
