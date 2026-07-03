@@ -3,6 +3,11 @@ export interface SuggestedQuestion {
   icon: string
 }
 
+export interface DatasetRef {
+  label: string
+  version?: string   // omitted → default golden set (insurance-dataset.csv)
+}
+
 export interface DemoConfig {
   demoId: string
   title: string
@@ -19,6 +24,7 @@ export interface DemoConfig {
   guardMarkers: string[]
   refusalBanner: string
   guardBanner: string
+  datasets?: DatasetRef[]   // eval datasets selectable in the Dataset modal; defaults to Golden only
 }
 
 /** Resolve per-demo config. Import from demos/{demoId}/web_config.ts */

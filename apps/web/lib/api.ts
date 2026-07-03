@@ -169,10 +169,11 @@ export async function fetchCorpus(demo: string): Promise<CorpusInfo | null> {
 export interface DatasetRow {
   eval_context: string
   input: string
-  output: string
-  expected_answer: string
-  expected_citations: string
-  expected_assertions: string
+  output?: string
+  expected_answer?: string
+  expected_citations?: string
+  expected_assertions?: string
+  [key: string]: string | undefined   // generic (TryEval) datasets carry other columns
 }
 
 export interface DatasetInfo {

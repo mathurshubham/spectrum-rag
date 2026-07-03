@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { fetchDataset, type DatasetInfo, type DatasetRow } from "@/lib/api"
-import type { DemoConfig } from "@/lib/demoConfig"
+import type { DemoConfig, DatasetRef } from "@/lib/demoConfig"
 
 interface Props {
   demo: string
@@ -62,20 +62,43 @@ function truncate(s: string, n: number) {
   return s.length > n ? s.slice(0, n) + "…" : s
 }
 
-function downloadCSV(rows: DatasetRow[], oracleCol: OracleCol, demoId: string) {
-  const BOM = "﻿"
-  const esc = (v: string) => '"' + (v ?? "").replace(/"/g, '""') + '"'
-  const header = ["eval_context", "input", "output", "expected_output"].map(esc).join(",")
-  const body = rows.map(r => [r.eval_context, r.input, r.output, r[oracleCol]].map(esc).join(",")).join("\n")
-  const csv = BOM + header + "\n" + body
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+const BOM = "﻿"
+// RFC-quote a field AND collapse embedded newlines to spaces. TryEval's importer splits on
+// \n BEFORE tokenizing quotes, so a raw newline inside a field corrupts the row — this keeps
+// every field on one physical line. Quotes are doubled ("") to match its escaping.
+const esc = (v: string | undefined) =>
+  '"' + (v ?? "").replace(/\r?\n/g, " ").replace(/"/g, '""') + '"'
+
+// bom: prepend a UTF-8 BOM (nice for Excel). MUST be false for TryEval uploads — a BOM
+// glues onto the first header ("﻿input" != "input") and breaks its required-column
+// detection. Fields are RFC-quoted (wrapped + doubled quotes) so commas/quotes survive.
+function saveCSV(csv: string, filename: string, bom: boolean) {
+  const blob = new Blob([(bom ? BOM : "") + csv], { type: "text/csv;charset=utf-8;" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
-  a.href = url; a.download = `${demoId}-dataset.csv`; a.click()
+  a.href = url; a.download = filename; a.click()
   URL.revokeObjectURL(url)
 }
 
+function downloadCSV(rows: DatasetRow[], oracleCol: OracleCol, filename: string) {
+  const header = ["eval_context", "input", "output", "expected_output"].map(esc).join(",")
+  const body = rows.map(r => [r.eval_context, r.input, r.output, r[oracleCol]].map(esc).join(",")).join("\n")
+  saveCSV(header + "\n" + body, filename, true)
+}
+
+// Generic (TryEval) datasets: raw columns/rows verbatim, no BOM, so the file is directly
+// uploadable to TryEval (canonical headers input/eval_context/expected_output[/output]).
+function downloadRaw(columns: string[], rows: DatasetRow[], filename: string) {
+  const header = columns.map(esc).join(",")
+  const body = rows.map(r => columns.map(c => esc(r[c])).join(",")).join("\n")
+  saveCSV(header + "\n" + body, filename, false)
+}
+
+const DEFAULT_DATASETS: DatasetRef[] = [{ label: "Golden" }]
+
 export function DatasetModal({ demo, config, onClose }: Props) {
+  const datasets = config.datasets ?? DEFAULT_DATASETS
+  const [selected, setSelected]           = useState(0)
   const [dataset, setDataset]             = useState<DatasetInfo | null>(null)
   const [loading, setLoading]             = useState(true)
   const [selectedCats, setSelectedCats]   = useState<Set<string>>(new Set())
@@ -91,14 +114,28 @@ export function DatasetModal({ demo, config, onClose }: Props) {
   }, [])
 
   useEffect(() => {
-    fetchDataset(demo).then(d => {
-      if (d) { setDataset(d); setSelectedCats(new Set(Object.keys(d.categories))) }
+    let live = true
+    fetchDataset(demo, datasets[selected]?.version).then(d => {
+      if (!live) return
+      setDataset(d ?? null)
+      if (d) setSelectedCats(new Set(Object.keys(d.categories)))
       setLoading(false)
     })
-  }, [demo])
+    return () => { live = false }
+  }, [demo, selected])   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filteredRows = dataset ? dataset.rows.filter(r => selectedCats.has(r.eval_context)) : []
+  function pickDataset(i: number) {
+    if (i === selected) return
+    setLoading(true); setDataset(null); setSelected(i)   // reset in handler, not effect
+  }
+
+  // Golden schema carries the oracle columns; TryEval sets don't → render generically.
+  const isGolden = !!dataset?.columns.includes("expected_answer")
+  const filteredRows = dataset
+    ? (isGolden ? dataset.rows.filter(r => selectedCats.has(r.eval_context)) : dataset.rows)
+    : []
   const previewRows  = filteredRows.slice(0, 10)
+  const downloadName = `${demo}${datasets[selected]?.version ? "-" + datasets[selected].version : ""}-dataset.csv`
 
   function toggleCat(cat: string) {
     setSelectedCats(prev => { const n = new Set(prev); n.has(cat) ? n.delete(cat) : n.add(cat); return n })
@@ -128,6 +165,18 @@ export function DatasetModal({ demo, config, onClose }: Props) {
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+          {datasets.length > 1 && (
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] font-semibold text-[var(--text-3)]">Dataset</label>
+              <select
+                value={selected}
+                onChange={e => pickDataset(Number(e.target.value))}
+                className="text-[12px] rounded-lg bg-[var(--bg-input)] border border-[var(--border)] px-2.5 py-1.5 text-[var(--text)] hover:border-[var(--border-hi)] cursor-pointer"
+              >
+                {datasets.map((d, i) => <option key={i} value={i}>{d.label}</option>)}
+              </select>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-5 h-5 border border-[var(--border-hi)] border-t-[var(--accent)] rounded-full animate-spin" />
@@ -136,6 +185,8 @@ export function DatasetModal({ demo, config, onClose }: Props) {
             <p className="text-[13px] text-[var(--text-3)] text-center py-8">No dataset found for this demo.</p>
           ) : (
             <>
+              {isGolden && (
+              <>
               {/* Category filter pills */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] text-[var(--text-3)] mr-1">{dataset.total} questions</span>
@@ -177,6 +228,8 @@ export function DatasetModal({ demo, config, onClose }: Props) {
                   ))}
                 </div>
               </div>
+              </>
+              )}
 
               {/* Preview table */}
               <div>
@@ -184,42 +237,65 @@ export function DatasetModal({ demo, config, onClose }: Props) {
                   Showing {previewRows.length} of {filteredRows.length} rows
                   {filteredRows.length !== dataset.total && ` (${dataset.total} total)`}
                 </p>
-                <div className="rounded-lg border border-[var(--border)] overflow-hidden">
+                <div className="rounded-lg border border-[var(--border)] overflow-hidden overflow-x-auto">
                   <table className="w-full text-[12px]">
-                    <thead className="bg-[var(--bg-card)] border-b border-[var(--border)]">
-                      <tr>
-                        <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-3)] uppercase tracking-wide w-28">Category</th>
-                        <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-3)] uppercase tracking-wide">Input</th>
-                        <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-3)] uppercase tracking-wide w-52">
-                          expected_output
-                          <span className="ml-1 text-[var(--accent)] normal-case font-normal opacity-70">({ORACLE_LABELS[oracleCol]})</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      {previewRows.map((row, i) => {
-                        const s = categoryStyle(row.eval_context, isDark)
-                        return (
-                          <tr key={i} className="hover:bg-[var(--bg-card)] transition-colors">
-                            <td className="px-3 py-2.5">
-                              <span className="inline-block text-[10px] px-2 py-0.5 rounded-full border font-medium"
-                                style={{ background: s.bg, color: s.text, borderColor: s.border }}>
-                                {row.eval_context}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5 text-[var(--text-2)]">{truncate(row.input, 70)}</td>
-                            <td className="px-3 py-2.5 text-[var(--text-3)] font-mono text-[11px]">{truncate(row[oracleCol], 55)}</td>
+                    {isGolden ? (
+                      <>
+                        <thead className="bg-[var(--bg-card)] border-b border-[var(--border)]">
+                          <tr>
+                            <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-3)] uppercase tracking-wide w-28">Category</th>
+                            <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-3)] uppercase tracking-wide">Input</th>
+                            <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-3)] uppercase tracking-wide w-52">
+                              expected_output
+                              <span className="ml-1 text-[var(--accent)] normal-case font-normal opacity-70">({ORACLE_LABELS[oracleCol]})</span>
+                            </th>
                           </tr>
-                        )
-                      })}
-                      {filteredRows.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="px-3 py-6 text-center text-[var(--text-3)] text-[12px]">
-                            No rows match the selected categories.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--border)]">
+                          {previewRows.map((row, i) => {
+                            const s = categoryStyle(row.eval_context, isDark)
+                            return (
+                              <tr key={i} className="hover:bg-[var(--bg-card)] transition-colors">
+                                <td className="px-3 py-2.5">
+                                  <span className="inline-block text-[10px] px-2 py-0.5 rounded-full border font-medium"
+                                    style={{ background: s.bg, color: s.text, borderColor: s.border }}>
+                                    {row.eval_context}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-[var(--text-2)]">{truncate(row.input, 70)}</td>
+                                <td className="px-3 py-2.5 text-[var(--text-3)] font-mono text-[11px]">{truncate(row[oracleCol] ?? "", 55)}</td>
+                              </tr>
+                            )
+                          })}
+                          {filteredRows.length === 0 && (
+                            <tr>
+                              <td colSpan={3} className="px-3 py-6 text-center text-[var(--text-3)] text-[12px]">
+                                No rows match the selected categories.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </>
+                    ) : (
+                      <>
+                        <thead className="bg-[var(--bg-card)] border-b border-[var(--border)]">
+                          <tr>
+                            {dataset.columns.map(c => (
+                              <th key={c} className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-3)] uppercase tracking-wide font-mono whitespace-nowrap">{c}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--border)]">
+                          {previewRows.map((row, i) => (
+                            <tr key={i} className="hover:bg-[var(--bg-card)] transition-colors align-top">
+                              {dataset.columns.map(c => (
+                                <td key={c} className="px-3 py-2.5 text-[var(--text-2)]">{truncate(row[c] ?? "", 60)}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </>
+                    )}
                   </table>
                 </div>
               </div>
@@ -234,7 +310,11 @@ export function DatasetModal({ demo, config, onClose }: Props) {
             Open TryEval →
           </a>
           <button
-            onClick={() => dataset && downloadCSV(filteredRows, oracleCol, demo)}
+            onClick={() => {
+              if (!dataset) return
+              if (isGolden) downloadCSV(filteredRows, oracleCol, downloadName)
+              else downloadRaw(dataset.columns, filteredRows, downloadName)
+            }}
             disabled={!dataset || filteredRows.length === 0}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
