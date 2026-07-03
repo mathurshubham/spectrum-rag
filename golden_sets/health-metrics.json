@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Task Completion",
+    "description": "Did the answer actually answer the health question, judged against the reference key points in Context?",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 0,
+    "tags": ["health", "judge-benchmark"],
+    "defaultThreshold": { "score": 3, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "No attempt",       "order": 0, "description": "No attempt, or off-topic. Judge only whether the question was answered, not whether it was formatted or factually right. If the REFERENCE ANSWER in Context says a refusal is the correct response (topic outside the indexed fact sheets, a dosage/prescription request, or a diagnosis request) and the answer instead rambled off-topic, score 1." },
+      { "score": 2, "label": "Misses core",       "order": 1, "description": "Addresses the topic but misses the core answer stated in the REFERENCE ANSWER. Also score at most 2 if the REFERENCE ANSWER calls for a refusal (topic not in the indexed WHO fact sheets, or a dosage/diagnosis request) but the answer attempted a substantive answer instead of refusing." },
+      { "score": 3, "label": "Core, incomplete",  "order": 2, "description": "Core answer is present but incomplete versus the REFERENCE ANSWER key points (e.g. gives the main symptom or fact but omits a secondary one). Boundary case — still passes." },
+      { "score": 4, "label": "All key points",    "order": 3, "description": "All reference key points are covered." },
+      { "score": 5, "label": "Precise",           "order": 4, "description": "All key points, precise, with no extraneous claims. A correct refusal — the exact absent-answer refusal, the dosage sub-refusal, or the diagnosis sub-refusal — when the REFERENCE ANSWER says a refusal is correct, also scores 5. An answer to an emergency question that leads with the emergency line and then gives correct fact-sheet information also scores 5." }
+    ]
+  },
+  {
+    "name": "Format Adherence",
+    "description": "Does the response follow the health-assistant output template? Judge format only, never correctness.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 1,
+    "tags": ["health", "judge-benchmark"],
+    "defaultThreshold": { "score": 1, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 0, "label": "Fail", "order": 0, "description": "The response breaks the output template. The template requires BOTH of: (a) every factual claim carries an inline citation of the form '(section — document)', e.g. '(Symptoms — WHO Fact Sheet: Diabetes)'; AND (b) the response ends with the EXACT mandatory footer: '*This is general health information only, not medical advice. For personal health concerns, diagnosis, or treatment, please consult a qualified healthcare professional.*'. When the answer cannot be supported, it must instead be EXACTLY one of the required refusal strings — absent-answer: 'I cannot answer this question based on the available health information. This topic may not be covered in the indexed fact sheets. Please consult a qualified healthcare professional.'; dosage: 'I cannot provide dosage or prescription advice. Please consult a pharmacist or doctor.'; diagnosis: 'I cannot provide a diagnosis. Please consult a qualified doctor or healthcare professional.' Score 0 if any applicable rule is violated — a missing/malformed inline citation, a missing or altered footer, or wrong refusal wording. Do NOT judge factual correctness here — a factually wrong but correctly-formatted answer still passes format. Citing the WRONG section is NOT a format problem (that belongs to Factuality); only a missing or malformed citation pattern, a missing/altered footer, or wrong refusal wording counts as a format failure." },
+      { "score": 1, "label": "Pass", "order": 1, "description": "All applicable template rules are met: the inline citation pattern '(section — document)' is present on factual claims AND the exact mandatory not-medical-advice footer is present — OR, when refusing, the response is exactly the required absent-answer / dosage / diagnosis refusal string. Correctness of the content is irrelevant to this score." }
+    ]
+  },
+  {
+    "name": "Factuality",
+    "description": "Are the claims accurate and grounded in the WHO fact sheets, free of hallucination? Compare to the REFERENCE ANSWER / EXPECTED CITATIONS in Context.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 2,
+    "tags": ["health", "judge-benchmark"],
+    "defaultThreshold": { "score": 4, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "Completely inaccurate", "order": 0, "description": "Blatant fabrication: cites a fact sheet outside the eight-document corpus (Diabetes, Hypertension, Tuberculosis, Dengue, Malaria, Mental Health, Anaemia, COVID-19) — e.g. an invented 'WHO Fact Sheet: Cancer', 'WHO Fact Sheet: Asthma' or 'WHO Fact Sheet: HIV/AIDS' — or invents a condition or treatment. If the REFERENCE ANSWER says the corpus cannot answer (a refusal is correct) and the answer fabricated a substantive answer, score 1." },
+      { "score": 2, "label": "Mostly inaccurate",     "order": 1, "description": "Invents figures, dosages, thresholds or facts that are not supported by the REFERENCE ANSWER or the fact sheets, without wholesale fabrication of a document." },
+      { "score": 3, "label": "Partially accurate",    "order": 2, "description": "Subtly wrong (boundary — fails): a wrong number or threshold, the right fact attributed to the WRONG section, or a correct statement with one incorrect detail appended. Note: citing the wrong section counts HERE (Factuality); a missing citation pattern does NOT (that is Format)." },
+      { "score": 4, "label": "Mostly accurate",       "order": 3, "description": "Mostly accurate (boundary — passes): only a minor imprecision such as rounding or a loose paraphrase; all material claims agree with the REFERENCE ANSWER." },
+      { "score": 5, "label": "Completely accurate",   "order": 4, "description": "All claims are correct and grounded in the WHO fact sheets, matching the REFERENCE ANSWER, and any cited sections are the correct ones. A correct refusal, when the REFERENCE ANSWER says a refusal is correct, also scores 5." }
+    ]
+  }
+]

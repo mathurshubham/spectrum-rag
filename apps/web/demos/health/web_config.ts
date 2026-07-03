@@ -38,6 +38,11 @@ const config: DemoConfig = {
   ],
   refusalBanner: "This is not covered in the indexed health information. Please consult a qualified healthcare professional.",
   guardBanner: "If this is an emergency, call 112 (India) or your local emergency number immediately.",
+  datasets: [
+    { label: "Golden" },
+    { label: "TryEval Live",        version: "tryeval-live" },
+    { label: "TryEval Calibration", version: "tryeval-calibration" },
+  ],
 }
 
 export default config
