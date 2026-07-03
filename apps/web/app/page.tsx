@@ -89,7 +89,7 @@ export default function RootPage() {
           Grounded AI Platform
         </span>
         <h1 className="relative text-[1.25rem] sm:text-4xl md:text-5xl font-bold text-[var(--text)] leading-[1.2] tracking-tight mb-4 max-w-xl w-full">
-          Five knowledge bases.<br />Zero hallucinations.
+          Six knowledge bases.<br />Zero hallucinations.
         </h1>
         <p className="relative text-[14px] sm:text-[15px] text-[var(--text-3)] max-w-sm mb-8 px-2">
           Select a domain to start asking grounded, cited questions.
