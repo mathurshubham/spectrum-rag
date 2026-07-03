@@ -1,4 +1,4 @@
-# RAG Demos — A Production-Grade, Multi-Domain Retrieval-Augmented Generation Platform
+# Spectrum RAG — A Production-Grade, Multi-Domain Retrieval-Augmented Generation Platform
 
 > One RAG engine, six grounded knowledge assistants. Hybrid retrieval (dense + BM25 + RRF), cross-encoder reranking, strict citation grounding, refusal & safety guardrails, golden-dataset evaluation — all running on a **single Raspberry Pi** with **zero GPU at query time**.
 
@@ -31,7 +31,7 @@ Most RAG demos stop at "embed some PDFs and call an LLM." This one is built like
 - **Grounded or silent.** The model is instructed to cite only retrieved `section_ref`s and to **refuse** when context is insufficient — no hallucinated statute numbers. A repealed-law guard catches questions that reference superseded acts (e.g. the old IPC) and points to the current provision.
 - **Hybrid retrieval that's actually measured.** Dense (pgvector/HNSW) and lexical (ParadeDB BM25) are fused with Reciprocal Rank Fusion, then re-ranked by a cross-encoder. Four retrieval modes (`hybrid`, `vanilla`, `bm25`, `hyde`) are switchable per request, so retrieval quality can be ablated rather than assumed.
 - **Multi-domain by design.** The same engine serves law, education, health, insurance, customer support, and French-language study help. A demo is pure configuration: a manifest, a corpus, prompts, validation checks, and a UI config.
-- **Evaluation is first-class.** Every demo ships a **golden dataset** (category-tagged questions with expected citations and machine-checkable assertions) plus a substring-asserting **section validation oracle** that runs before/after ingest.
+- **Evaluation is first-class.** Every demo ships a **golden dataset** (category-tagged questions with expected citations and machine-checkable assertions), a substring-asserting **section validation oracle** that runs before/after ingest, and a deterministic **LLM-judge / HITL calibration benchmark** (labeled decision-boundary set + TryEval-uploadable run/calibration sets + a judge-vs-gold scorer).
 - **Runs cheap.** The production target is a Raspberry Pi 4: ParadeDB in Docker, FastAPI and Next.js bare-metal, models served via API (OpenRouter) so there's **no GPU and no local model load at query time**.
 
 ---
@@ -155,7 +155,8 @@ The response includes a full **trace**: per-stage latency (`condense_ms`, `retri
 - **Bring-your-own-key** — clients pass `X-OpenRouter-Key`; the server falls back to its own key so the app works out-of-the-box.
 - **Observability** — per-stage latency, token usage, and a trace id on every response.
 - **Multilingual** — `bge-m3` embeddings + a French demo with `fr` / `en` / `bilingual` answer modes.
-- **Golden-dataset evaluation** — category-tagged eval sets, a substring section-validation oracle, an in-app dataset viewer, and a **TryEval** export.
+- **Golden-dataset evaluation** — category-tagged eval sets, a substring section-validation oracle, and an in-app dataset viewer with a **version picker** (Golden / TryEval Live / TryEval Calibration) plus a **TryEval** export.
+- **LLM-judge / HITL benchmark** — per-domain, deterministic (seed 1234) judge datasets with a baked-in 30% failure rate and an ~18% borderline band, graded on Task / Format / Factuality rubrics (support adds Confidentiality / Escalation / Tone), plus a scorer reporting Cohen's κ, fail-class P/R, and borderline flip-rate. Gold labels never reach the model or the judge (packed into `eval_context`, no `${CONTEXT}` in the endpoint template).
 - **Premium UI** — dark/light themes, mobile-responsive, a retrieved-chunks inspector, a live corpus viewer, and a settings panel.
 
 ---
@@ -173,7 +174,7 @@ The response includes a full **trace**: per-stage latency (`condense_ms`, `retri
 │   │   │   ├── rerank.py        # cross-encoder rerank via OpenRouter
 │   │   │   ├── embed.py         # bge-m3 (OpenRouter) + local qwen3 fallback
 │   │   │   ├── condense.py      # multi-turn query condenser
-│   │   │   ├── dataset.py       # serves golden datasets to the UI
+│   │   │   ├── dataset.py       # serves golden + judge datasets (?version=) to the UI
 │   │   │   ├── gateway.py       # OpenRouter / Cloudflare AI Gateway client
 │   │   │   ├── config.py / db.py
 │   │   │   └── prompts/         # engine-level prompts (condense)
@@ -188,7 +189,14 @@ The response includes a full **trace**: per-stage latency (`condense_ms`, `retri
 │       └── lib/                 # api client, demo config loader, types
 ├── demos/                       # one folder per demo (config + corpus + prompts)
 │   ├── law/ education/ health/ insurance/ support/ french/
-├── golden_sets/                 # *-dataset.csv evaluation sets
+├── golden_sets/                 # evaluation sets + LLM-judge benchmark
+│   ├── <demo>-dataset.csv           # golden eval set (per demo)
+│   ├── _build_<demo>_judge.py       # deterministic judge-benchmark generator
+│   ├── _score_<demo>_judge.py       # judge-vs-gold scorer (κ, P/R, flip-rate)
+│   ├── <demo>-judge-dataset.csv     # labeled gold side-file (scores/verdict)
+│   ├── <demo>-tryeval-{live,calibration}-dataset.csv   # TryEval uploads
+│   ├── <demo>-metrics.json          # TryEval rubric metric definitions
+│   └── <demo>-tryeval-setup.md      # per-domain import/calibration guide
 ├── corpus/                      # shared/raw legal corpus (PDF + clean text)
 ├── docker-compose.yml           # ParadeDB (+ optional api/web images)
 ├── DEPLOY.md / ROLLBACK.md      # Raspberry Pi runbook
@@ -298,7 +306,18 @@ Two complementary checks:
 - **Section validation oracle** (`validate_sections.py`) — asserts that each `section_ref` resolves to content containing an expected substring (e.g. *BNS s.103 → "murder"*). Runs against the clean files (pre-ingest) or the DB (post-ingest), and exits non-zero on failure — usable as a CI gate.
 - **Golden-set grading** — programmatic citation/assertion checks plus an optional LLM-judge over `expected_answer`. Cases tagged `refusal`/`guard` verify that the model **declines** or **flags repealed law** correctly.
 
-The web app exposes both: a **dataset viewer** (`DatasetModal`) and a **TryEval export** (`TryEvalExportModal`) for running the set in your own harness.
+The web app exposes both: a **dataset viewer** (`DatasetModal`, with a Golden / TryEval Live / TryEval Calibration version picker) and a **TryEval export** (`TryEvalExportModal`) for running the set in your own harness.
+
+### LLM-judge / HITL benchmark
+
+Beyond the golden set, every demo ships a **deterministic judge benchmark** for calibrating an LLM-as-judge (or a human-in-the-loop reviewer) before you trust it on a live run. It is generated offline (`_build_<demo>_judge.py`, seed 1234 — no API calls) and is engineered to be a *decision-boundary* set rather than a bimodal one:
+
+- **200 or 300 rows**, a baked-in **30% failure rate**, and an **~18% borderline band** (factuality 3↔4, task 3) with graded hallucination severity, format-only "halo" failures, and matched pass/fail pairs (same input, opposite verdict).
+- **Three rubrics** — **Task Completion** (1–5, pass ≥3), **Format Adherence** (0/1), **Factuality** (1–5, pass ≥4); the verdict is *derived* from the scores, never hand-set. The **support** demo adds three domain rubrics — **Confidentiality / No-Leak**, **Escalation Correctness**, and **Tone**.
+- **Three artifacts per demo:** a labeled gold side-file (full scores/verdict/failure-mode — never uploaded), a **TryEval Live** set (blank output; the platform calls the RAG endpoint), and a **TryEval Calibration** set (pre-filled output for cheap direct-eval, with the reference packed into `eval_context` so it reaches the judge but never the model — no leak).
+- **A scorer** (`_score_<demo>_judge.py`) grades a judge export against gold: Cohen's κ, fail-class precision/recall, per-rubric threshold-crossing agreement, clear-vs-borderline stratification, matched-pair sensitivity, and (with two runs) borderline flip-rate. `--selftest` fabricates a noisy judge to prove the metrics end-to-end.
+
+`<demo>-metrics.json` holds the TryEval rubric definitions (all grading anchors live in the option descriptions), and `<demo>-tryeval-setup.md` is the per-domain import/isolation/calibration-join guide.
 
 See **[evals-strategy.md](evals-strategy.md)** for the full metric definitions, harness design, and CI integration.
 

@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     await close_pool()
 
 
-app = FastAPI(title="RAG Demos API", lifespan=lifespan)
+app = FastAPI(title="Spectrum RAG API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
