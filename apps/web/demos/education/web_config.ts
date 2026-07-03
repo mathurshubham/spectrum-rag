@@ -37,6 +37,11 @@ const config: DemoConfig = {
   guardMarkers: [],
   refusalBanner: "This is outside your indexed NCERT chapters. Check with your teacher or another reference.",
   guardBanner: "",
+  datasets: [
+    { label: "Golden" },
+    { label: "TryEval Live",        version: "tryeval-live" },
+    { label: "TryEval Calibration", version: "tryeval-calibration" },
+  ],
 }
 
 export default config
