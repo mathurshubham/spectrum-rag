@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Task Completion",
+    "description": "Did the answer actually answer the question, judged against the reference key points in Context? Answers are expected in French (the study bot's default reply mode is 'Réponds uniquement en français'); judge whether the question was answered, not the language itself.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 0,
+    "tags": ["french", "judge-benchmark"],
+    "defaultThreshold": { "score": 3, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "No attempt",       "order": 0, "description": "No attempt, or off-topic. Judge only whether the question was answered, not whether it was formatted or factually right. If the REFERENCE ANSWER in Context says a refusal is the correct response and the answer instead rambled off-topic, score 1." },
+      { "score": 2, "label": "Misses core",       "order": 1, "description": "Addresses the topic but misses the core answer stated in the REFERENCE ANSWER. Also score at most 2 if the REFERENCE ANSWER calls for a refusal (question is outside the indexed French chapters, or is a request to solve an exercise / write a student's homework / produce inappropriate content) but the answer attempted a substantive answer instead of refusing." },
+      { "score": 3, "label": "Core, incomplete",  "order": 2, "description": "Core answer is present but incomplete versus the REFERENCE ANSWER key points (e.g. gives the main lesson/theme fact but omits a secondary one). Boundary case — still passes." },
+      { "score": 4, "label": "All key points",    "order": 3, "description": "All reference key points are covered." },
+      { "score": 5, "label": "Precise",           "order": 4, "description": "All key points, precise, with no extraneous claims, answered in French. A correct refusal, when the REFERENCE ANSWER says a refusal is correct, also scores 5." }
+    ]
+  },
+  {
+    "name": "Format Adherence",
+    "description": "Does the response follow the French study-bot output template? Judge format only, never correctness. Answers are in French but the two refusal strings below are in English exactly as the system prompt defines them.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 1,
+    "tags": ["french", "judge-benchmark"],
+    "defaultThreshold": { "score": 1, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 0, "label": "Fail", "order": 0, "description": "The response breaks the output template. The template requires: (a) every factual claim carries an inline citation of the form '**(short §section — full title)**', e.g. '**(EJ-9 §Leçon 3 — CBSE Class 9: Entre Jeunes)**' or '**(IB-Identités §A Qui suis-je — IB DP French B: Identités)**'; (b) there is NO mandatory disclaimer footer for this domain — do not penalise a missing footer; (c) if the answer cannot be supported by the indexed chapters, it must be EXACTLY the refusal string: 'I cannot answer this from your indexed French textbooks. This topic may be outside the indexed chapters. Check with your teacher or another reference book.' — or, when a named Leçon/Unit is not indexed, EXACTLY: 'I don't have content from {chapter} in the indexed corpus. Either share the chapter pages, or ask about a chapter I have indexed.' Score 0 if any applicable rule is violated (missing/malformed inline citation, or wrong refusal wording). Do NOT judge factual correctness here — a factually wrong but correctly-formatted answer still passes format. Citing the WRONG lesson/section is NOT a format problem (that belongs to Factuality); only a missing or malformed citation pattern, or wrong refusal wording, counts as a format failure." },
+      { "score": 1, "label": "Pass", "order": 1, "description": "All applicable template rules are met: the inline citation pattern '**(short §section — full title)**' is present on factual claims — OR, when refusing, the response is exactly one of the two required refusal strings. Correctness of the content is irrelevant to this score." }
+    ]
+  },
+  {
+    "name": "Factuality",
+    "description": "Are the claims accurate and grounded in the indexed French chapters, free of hallucination? Compare to the REFERENCE ANSWER / EXPECTED CITATIONS in Context. Content is in French.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 2,
+    "tags": ["french", "judge-benchmark"],
+    "defaultThreshold": { "score": 4, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "Completely inaccurate", "order": 0, "description": "Blatant fabrication: cites a document or chapter outside the indexed corpus (CBSE 9/10 Entre Jeunes; IB DP French B Oxford themes Identités / Expériences / Ingéniosité humaine / Organisation sociale / Partage de la planète), or invents a book, lesson or fact — e.g. citing 'Espagnol Chapitre 2', 'Manuel de Physique' or 'Indian Penal Code'. If the REFERENCE ANSWER says the corpus cannot answer (a refusal is correct) and the answer fabricated a substantive answer, score 1." },
+      { "score": 2, "label": "Mostly inaccurate",     "order": 1, "description": "Invents figures, dates, page numbers or facts that are not supported by the REFERENCE ANSWER or the indexed chapters, without wholesale fabrication of a document." },
+      { "score": 3, "label": "Partially accurate",    "order": 2, "description": "Subtly wrong (boundary — fails): a wrong fact or number, the right fact attributed to the WRONG lesson/section, or a correct statement with one incorrect detail appended. Note: citing the wrong lesson/section counts HERE (Factuality); a missing citation pattern does NOT (that is Format)." },
+      { "score": 4, "label": "Mostly accurate",       "order": 3, "description": "Mostly accurate (boundary — passes): only a minor imprecision such as a loose paraphrase or rounding; all material claims agree with the REFERENCE ANSWER." },
+      { "score": 5, "label": "Completely accurate",   "order": 4, "description": "All claims are correct and grounded in French, matching the REFERENCE ANSWER, and any cited lessons/sections are the correct ones. A correct refusal, when the REFERENCE ANSWER says a refusal is correct, also scores 5." }
+    ]
+  }
+]
