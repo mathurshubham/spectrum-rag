@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RAG Demos",
+  title: "Spectrum RAG",
   description: "Grounded question-answering over curated corpora",
 };
 

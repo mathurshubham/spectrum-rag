@@ -62,7 +62,7 @@ export default function RootPage() {
       {/* Nav */}
       <nav className="sticky top-0 z-20 flex items-center justify-between px-6 h-12 border-b border-[var(--border)] bg-[var(--bg)]"
         style={{ backdropFilter: "blur(12px)" }}>
-        <span className="text-[13px] font-semibold text-[var(--text)]">RAG Demos</span>
+        <span className="text-[13px] font-semibold text-[var(--text)]">Spectrum RAG</span>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <button
