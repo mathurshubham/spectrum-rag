@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Task Completion",
+    "description": "Did the answer actually answer the student's question, judged against the reference key points in Context?",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 0,
+    "tags": ["education", "judge-benchmark"],
+    "defaultThreshold": { "score": 3, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "No attempt",       "order": 0, "description": "No attempt, or off-topic. Judge only whether the question was answered, not whether it was formatted or factually right. If the REFERENCE ANSWER in Context says a refusal is the correct response (the topic is outside the indexed NCERT chapters) and the answer instead rambled off-topic, score 1. A study bot that is asked to WRITE the essay / complete the homework / give the exercise answer should EXPLAIN the concept instead; if it neither explains nor answers, score 1." },
+      { "score": 2, "label": "Misses core",       "order": 1, "description": "Addresses the topic but misses the core answer stated in the REFERENCE ANSWER. Also score at most 2 if the REFERENCE ANSWER calls for a refusal (question is outside the indexed Class 10 Social Science chapters) but the answer attempted a substantive answer instead of refusing." },
+      { "score": 3, "label": "Core, incomplete",  "order": 2, "description": "Core answer is present but incomplete versus the REFERENCE ANSWER key points (e.g. gives the main fact but omits a secondary one). Boundary case — still passes. For a homework-completion request, correctly declining to do it AND explaining the concept counts as completing the task." },
+      { "score": 4, "label": "All key points",    "order": 3, "description": "All reference key points are covered." },
+      { "score": 5, "label": "Precise",           "order": 4, "description": "All key points, precise, with no extraneous claims. A correct refusal, when the REFERENCE ANSWER says a refusal is correct, also scores 5." }
+    ]
+  },
+  {
+    "name": "Format Adherence",
+    "description": "Does the response follow the study-bot output template? Judge format only, never correctness.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 1,
+    "tags": ["education", "judge-benchmark"],
+    "defaultThreshold": { "score": 1, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 0, "label": "Fail", "order": 0, "description": "The response breaks the output template. The template requires: (a) every factual claim carries an inline citation of the form '**(section — chapter)**', e.g. '**(Hist Ch.2 §1.2 — History Ch.2: Nationalism in India)**' (note the em-dash '—' and the surrounding '**' emphasis markers); (b) if the answer cannot be supported by the indexed chapters, it must be EXACTLY the refusal string: 'I cannot answer this from your indexed NCERT chapters. This topic may be outside the chapters available here. Check with your teacher or another reference book.' There is NO disclaimer footer in this domain — do not penalise its absence. Score 0 if any applicable rule is violated. Do NOT judge factual correctness here — a factually wrong but correctly-formatted answer still passes format. Citing the WRONG section number is NOT a format problem (that belongs to Factuality); only a missing or malformed citation pattern, or wrong refusal wording, counts as a format failure." },
+      { "score": 1, "label": "Pass", "order": 1, "description": "All applicable template rules are met: the inline citation pattern '**(section — chapter)**' is present on factual claims — OR, when refusing, the response is exactly the required refusal string. Correctness of the content is irrelevant to this score." }
+    ]
+  },
+  {
+    "name": "Factuality",
+    "description": "Are the claims accurate and grounded in the indexed NCERT chapters, free of hallucination? Compare to the REFERENCE ANSWER / EXPECTED CITATIONS in Context.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 2,
+    "tags": ["education", "judge-benchmark"],
+    "defaultThreshold": { "score": 4, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "Completely inaccurate", "order": 0, "description": "Blatant fabrication: cites a chapter or subject outside the nine indexed NCERT Class 10 Social Science chapters (History Ch.1-3, Geography Ch.1-2, Economics Ch.1-2, Political Science Ch.1-2) — e.g. a Science, Maths, English or other-class chapter — or invents a topic wholesale. If the REFERENCE ANSWER says the corpus cannot answer (a refusal is correct) and the answer fabricated a substantive answer, score 1." },
+      { "score": 2, "label": "Mostly inaccurate",     "order": 1, "description": "Invents figures, dates or facts that are not supported by the REFERENCE ANSWER or the chapter, without wholesale fabrication of a chapter." },
+      { "score": 3, "label": "Partially accurate",    "order": 2, "description": "Subtly wrong (boundary — fails): a wrong date or number, the right fact attributed to the WRONG section number, or a correct statement with one incorrect detail appended. Note: citing the wrong section number counts HERE (Factuality); a missing citation pattern does NOT (that is Format)." },
+      { "score": 4, "label": "Mostly accurate",       "order": 3, "description": "Mostly accurate (boundary — passes): only a minor imprecision such as a loose paraphrase or simplified wording; all material claims agree with the REFERENCE ANSWER." },
+      { "score": 5, "label": "Completely accurate",   "order": 4, "description": "All claims are correct and grounded, matching the REFERENCE ANSWER, and any cited sections are the correct ones. A correct refusal, when the REFERENCE ANSWER says a refusal is correct, also scores 5." }
+    ]
+  }
+]
