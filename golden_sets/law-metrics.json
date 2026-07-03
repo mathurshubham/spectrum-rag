@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Task Completion",
+    "description": "Did the answer actually answer the legal question asked, judged against the reference key points in Context?",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 0,
+    "tags": ["law", "judge-benchmark"],
+    "defaultThreshold": { "score": 3, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "No attempt",       "order": 0, "description": "No attempt, or off-topic. Judge only whether the question was answered, not whether it was formatted or factually right. If the REFERENCE ANSWER in Context says a refusal is the correct response and the answer instead rambled off-topic, score 1." },
+      { "score": 2, "label": "Misses core",       "order": 1, "description": "Addresses the topic but misses the core answer stated in the REFERENCE ANSWER. Also score at most 2 if the REFERENCE ANSWER calls for a refusal (the question is outside the indexed statutes) but the answer attempted a substantive answer instead of refusing." },
+      { "score": 3, "label": "Core, incomplete",  "order": 2, "description": "Core answer is present but incomplete versus the REFERENCE ANSWER key points (e.g. states the operative rule but omits a secondary detail, or names the replacement statute for a repealed provision but omits the specific replacement section). Boundary case — still passes." },
+      { "score": 4, "label": "All key points",    "order": 3, "description": "All reference key points are covered." },
+      { "score": 5, "label": "Precise",           "order": 4, "description": "All key points, precise, with no extraneous claims. A correct refusal, when the REFERENCE ANSWER says a refusal is correct, also scores 5." }
+    ]
+  },
+  {
+    "name": "Format Adherence",
+    "description": "Does the response follow the legal-assistant output template? Judge format only, never correctness.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 1,
+    "tags": ["law", "judge-benchmark"],
+    "defaultThreshold": { "score": 1, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 0, "label": "Fail", "order": 0, "description": "The response breaks the output template. The template requires ALL of: (a) every factual claim carries an inline citation of the form '**(section_ref — doc_title)**', e.g. '**(BNS s.103 — Bharatiya Nyaya Sanhita 2023)**' (the Constitution uses 'Art. {n}' as its section_ref, e.g. '**(Art. 21 — Constitution of India)**'); (b) the response ends with the exact footer: '*This is not legal advice. For specific legal matters, consult a qualified advocate.*'; (c) if the answer cannot be supported by the corpus, it must be EXACTLY the refusal string: 'I cannot answer this question based on the available legal corpus. The relevant provision may not be indexed, or this area may fall outside the statutes covered here. Please consult a qualified legal professional.' Score 0 if any applicable rule is violated. Do NOT judge factual correctness here — a factually wrong but correctly-formatted answer still passes format. Citing the WRONG section number, or naming the wrong replacement statute for a repealed provision, is NOT a format problem (that belongs to Factuality); only a missing or malformed citation pattern, a missing/altered footer, or wrong refusal wording counts as a format failure." },
+      { "score": 1, "label": "Pass", "order": 1, "description": "All applicable template rules are met: the inline citation pattern '**(section_ref — doc_title)**' is present on factual claims and the exact not-legal-advice footer is present — OR, when refusing, the response is exactly the required refusal string. Correctness of the content is irrelevant to this score." }
+    ]
+  },
+  {
+    "name": "Factuality",
+    "description": "Are the claims accurate and grounded in the indexed statutes, free of hallucination? Compare to the REFERENCE ANSWER / EXPECTED CITATIONS in Context.",
+    "supportsLLMJudge": true,
+    "supportsHumanEval": true,
+    "order": 2,
+    "tags": ["law", "judge-benchmark"],
+    "defaultThreshold": { "score": 4, "comparator": ">=", "pass": true },
+    "options": [
+      { "score": 1, "label": "Completely inaccurate", "order": 0, "description": "Blatant fabrication: cites a statute or section outside the indexed corpus (BNS 2023 / BNSS 2023 / BSA 2023 / Indian Contract Act 1872 / Consumer Protection Act 2019 / DPDP Act 2023 / Constitution of India / the repeal-mapping reference), or — in a repealed-statute query — cites the REPEALED provision (e.g. IPC s.302, CrPC, Indian Evidence Act, Consumer Protection Act 1986) AS IF it were the current governing law. If the REFERENCE ANSWER says the corpus cannot answer (a refusal is correct) and the answer fabricated a substantive answer, score 1." },
+      { "score": 2, "label": "Mostly inaccurate",     "order": 1, "description": "Invents figures, section numbers, penalties or terms that are not supported by the REFERENCE ANSWER or the corpus, without wholesale fabrication of a statute." },
+      { "score": 3, "label": "Partially accurate",    "order": 2, "description": "Subtly wrong (boundary — fails): a wrong number, the right rule attributed to the WRONG section, or — for a repealed provision — naming the WRONG replacement section (e.g. IPC 302 mapped to BNS s.101 instead of BNS s.103), or a correct statement with one incorrect detail appended. Note: citing the wrong section number counts HERE (Factuality); a missing citation pattern does NOT (that is Format)." },
+      { "score": 4, "label": "Mostly accurate",       "order": 3, "description": "Mostly accurate (boundary — passes): only a minor imprecision such as rounding or a loose paraphrase; all material claims agree with the REFERENCE ANSWER." },
+      { "score": 5, "label": "Completely accurate",   "order": 4, "description": "All claims are correct and grounded, matching the REFERENCE ANSWER, and any cited sections are the correct ones (including the correct replacement statute and section for a repealed provision). A correct refusal, when the REFERENCE ANSWER says a refusal is correct, also scores 5." }
+    ]
+  }
+]

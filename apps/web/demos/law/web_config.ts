@@ -39,6 +39,11 @@ const config: DemoConfig = {
   ],
   refusalBanner: "Insufficient context — this question falls outside the indexed corpus.",
   guardBanner: "References repealed law — current statute shown below.",
+  datasets: [
+    { label: "Golden" },
+    { label: "TryEval Live",        version: "tryeval-live" },
+    { label: "TryEval Calibration", version: "tryeval-calibration" },
+  ],
 }
 
 export default config
