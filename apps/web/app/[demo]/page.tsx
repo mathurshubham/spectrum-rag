@@ -54,11 +54,15 @@ const BOARD_KEY = "rag-demo-board"
 function newId() { return Math.random().toString(36).slice(2) }
 
 const SETTINGS_KEY = "rag-demo-settings"
-const _EMPTY: Settings = { openrouterKey: "", cfAccountId: "", cfGatewayId: "" }
+const _EMPTY: Settings = {
+  openrouterKey: "", cfAccountId: "", cfGatewayId: "",
+  genProvider: "openrouter", openaiKey: "", openaiModel: "gpt-4o",
+}
 
 function loadSettings(): Settings {
   if (typeof window === "undefined") return _EMPTY
-  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "null") ?? _EMPTY } catch { return _EMPTY }
+  // Merge with defaults so settings saved before new fields existed don't come back undefined.
+  try { return { ..._EMPTY, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "null") ?? {}) } } catch { return _EMPTY }
 }
 function saveSettings(s: Settings) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)) } catch {}

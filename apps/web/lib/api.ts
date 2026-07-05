@@ -29,11 +29,18 @@ export async function postQuery(
     "Content-Type": "application/json",
     "X-OpenRouter-Key": settings.openrouterKey,
   }
+  if (settings.genProvider === "openai" && settings.openaiKey) {
+    headers["X-OpenAI-Key"] = settings.openaiKey
+  }
 
   const params = new URLSearchParams({ mode })
   if (settings.cfAccountId) params.set("cf_account_id", settings.cfAccountId)
   if (settings.cfGatewayId) params.set("cf_gateway_id", settings.cfGatewayId)
   if (board && board !== "all") params.set("board", board)
+  if (settings.genProvider === "openai") {
+    params.set("provider", "openai")
+    if (settings.openaiModel) params.set("openai_model", settings.openaiModel)
+  }
 
   const body: Record<string, unknown> = { q, history }
   if (languageMode) body.language_mode = languageMode
@@ -82,11 +89,18 @@ export async function postQueryStream(
     "Content-Type": "application/json",
     "X-OpenRouter-Key": settings.openrouterKey,
   }
+  if (settings.genProvider === "openai" && settings.openaiKey) {
+    headers["X-OpenAI-Key"] = settings.openaiKey
+  }
 
   const params = new URLSearchParams({ mode })
   if (settings.cfAccountId) params.set("cf_account_id", settings.cfAccountId)
   if (settings.cfGatewayId) params.set("cf_gateway_id", settings.cfGatewayId)
   if (board && board !== "all") params.set("board", board)
+  if (settings.genProvider === "openai") {
+    params.set("provider", "openai")
+    if (settings.openaiModel) params.set("openai_model", settings.openaiModel)
+  }
 
   const body: Record<string, unknown> = { q, history }
   if (languageMode) body.language_mode = languageMode

@@ -1,13 +1,24 @@
 "use client"
 
 import { useState } from "react"
-import type { Settings } from "@/lib/types"
+import type { Settings, GenProvider } from "@/lib/types"
 
 interface Props {
   settings: Settings
   onSave: (s: Settings) => void
   onClose: () => void
 }
+
+// Static curated list of OpenAI chat models offered for generation.
+const OPENAI_MODELS = [
+  "gpt-4o",
+  "gpt-4o-mini",
+  "gpt-4.1",
+  "gpt-4.1-mini",
+  "gpt-4.1-nano",
+  "o3",
+  "o4-mini",
+]
 
 function Field({
   label, hint, type = "text", placeholder, value, onChange,
@@ -60,14 +71,60 @@ export function SettingsPanel({ settings, onSave, onClose }: Props) {
 
         {/* Body */}
         <div className="px-5 py-5 space-y-4">
+          {/* Generation provider toggle */}
+          <div className="space-y-1.5">
+            <label className="text-[13px] font-medium text-[var(--text)]">Generation provider</label>
+            <div className="flex gap-2">
+              {(["openrouter", "openai"] as GenProvider[]).map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setDraft(d => ({ ...d, genProvider: p }))}
+                  className="flex-1 px-3 py-2 rounded-lg border text-[12px] font-medium transition-all"
+                  style={draft.genProvider === p
+                    ? { background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }
+                    : { background: "var(--bg-input)", borderColor: "var(--border)", color: "var(--text-2)" }}
+                >
+                  {p === "openrouter" ? "OpenRouter" : "OpenAI"}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Field
             label="OpenRouter API Key"
-            hint="Optional · overrides the server default key"
+            hint={draft.genProvider === "openai"
+              ? "Still used for retrieval (embeddings). Required unless the server default is set."
+              : "Optional · overrides the server default key"}
             type="password"
             placeholder="sk-or-..."
             value={draft.openrouterKey}
             onChange={v => setDraft(d => ({ ...d, openrouterKey: v }))}
           />
+
+          {draft.genProvider === "openai" && (
+            <div className="space-y-4">
+              <Field
+                label="OpenAI API Key"
+                hint="Used for generation, HyDE and condensing. Reranking is skipped in OpenAI mode."
+                type="password"
+                placeholder="sk-..."
+                value={draft.openaiKey}
+                onChange={v => setDraft(d => ({ ...d, openaiKey: v }))}
+              />
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-medium text-[var(--text)]">OpenAI model</label>
+                <select
+                  className="w-full rounded-lg border border-[var(--border-hi)] bg-[var(--bg-input)] px-3.5 py-2.5 text-[13px] text-[var(--text)] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+                  value={draft.openaiModel}
+                  onChange={e => setDraft(d => ({ ...d, openaiModel: e.target.value }))}
+                >
+                  {OPENAI_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
           <div className="border-t border-[var(--border)] pt-4 space-y-4">
             <p className="text-[10px] font-semibold text-[var(--text-4)] uppercase tracking-wide">
               Cloudflare AI Gateway — optional
