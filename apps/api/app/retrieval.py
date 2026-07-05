@@ -132,6 +132,8 @@ async def retrieve(
     visibility: list[str] | None = None,
     openrouter_key: str | None = None,
     hyde_model: str | None = None,
+    provider: str = "openrouter",
+    openai_key: str | None = None,
     cf_account_id: str | None = None,
     cf_gateway_id: str | None = None,
     board: str | None = None,
@@ -164,13 +166,19 @@ async def retrieve(
         if mode == "hyde":
             from .gateway import chat_completion
             import os
-            model = hyde_model or os.getenv("HYDE_MODEL", "openai/gpt-4.1-mini")
+            from .config import settings as _settings
+            if provider == "openai":
+                model = _settings.openai_fast_model
+            else:
+                model = hyde_model or os.getenv("HYDE_MODEL", "openai/gpt-4.1-mini")
             key = openrouter_key or ""
             hyde_prompt_tmpl = _load_hyde_prompt(demo_id)
             result = await chat_completion(
                 messages=[{"role": "user", "content": hyde_prompt_tmpl.format(query=query)}],
                 model=model,
                 openrouter_key=key,
+                provider=provider,
+                openai_key=openai_key,
                 account_id=cf_account_id,
                 gateway_id=cf_gateway_id,
                 max_tokens=256,

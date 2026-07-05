@@ -67,8 +67,13 @@ export interface ChatMessage extends Turn {
   error?: string
 }
 
+export type GenProvider = "openrouter" | "openai"
+
 export interface Settings {
   openrouterKey: string
   cfAccountId: string
   cfGatewayId: string
+  genProvider: GenProvider
+  openaiKey: string
+  openaiModel: string
 }

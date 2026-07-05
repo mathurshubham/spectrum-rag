@@ -38,6 +38,8 @@ async def condense_query(
     history: list[dict],
     openrouter_key: str,
     *,
+    provider: str = "openrouter",
+    openai_key: str | None = None,
     account_id: str | None = None,
     gateway_id: str | None = None,
 ) -> str:
@@ -48,13 +50,16 @@ async def condense_query(
     context = _format_history(history)
     user_msg = f"Conversation so far:\n{context}\n\nFollow-up: {query}\n\nStandalone query:"
 
+    model = settings.openai_fast_model if provider == "openai" else _CONDENSE_MODEL
     result = await chat_completion(
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user_msg},
         ],
-        model=_CONDENSE_MODEL,
+        model=model,
         openrouter_key=openrouter_key,
+        provider=provider,
+        openai_key=openai_key,
         account_id=account_id,
         gateway_id=gateway_id,
         max_tokens=128,

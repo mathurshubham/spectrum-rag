@@ -235,6 +235,16 @@ def _resolve_key(x_openrouter_key: str | None) -> str:
     return key
 
 
+def _resolve_openai_key(x_openai_key: str | None) -> str:
+    key = x_openai_key or settings.openai_api_key or None
+    if not key:
+        raise HTTPException(status_code=401, detail="X-OpenAI-Key header required for provider=openai")
+    return key
+
+
+_OPENAI_DEFAULT_GEN = "gpt-4o"
+
+
 def _serialize_chunks(chunks: list[dict]) -> list[dict]:
     return [
         {
@@ -268,6 +278,9 @@ async def _prepare_generation(
     cf_gateway_id: str | None,
     board: str | None,
     openrouter_key: str,
+    provider: str = "openrouter",
+    openai_key: str | None = None,
+    openai_model: str | None = None,
 ) -> dict:
     """Run condense → retrieve → rerank and build the generation messages.
     Returns everything both the streaming and non-streaming endpoints need so
@@ -280,6 +293,7 @@ async def _prepare_generation(
     history = [t.model_dump() for t in req.history]
     effective_q = await condense_query(
         req.q, history, openrouter_key,
+        provider=provider, openai_key=openai_key,
         account_id=cf_account_id, gateway_id=cf_gateway_id,
     )
     condense_ms = int((time.perf_counter() - t0) * 1000)
@@ -303,6 +317,8 @@ async def _prepare_generation(
         visibility=req.visibility,
         openrouter_key=openrouter_key,
         hyde_model=None,
+        provider=provider,
+        openai_key=openai_key,
         cf_account_id=cf_account_id,
         cf_gateway_id=cf_gateway_id,
         board=board,
@@ -345,7 +361,10 @@ async def _prepare_generation(
         chunks = chunks[:top_n]
 
     # build messages
-    model = gen_model or _GEN_MODEL
+    if provider == "openai":
+        model = openai_model or _OPENAI_DEFAULT_GEN
+    else:
+        model = gen_model or _GEN_MODEL
     system_tmpl = _load_system_prompt(demo_id, prompt_version)
     context_str = _build_context(chunks)
     lang_mode = (req.language_mode or "bilingual").lower()
@@ -372,6 +391,7 @@ async def _prepare_generation(
         "top_k": top_k,
         "top_n": top_n,
         "rerank": do_rerank,
+        "provider": provider,
         "gen_model": model,
         "reranker_model": reranker_model or settings.reranker_model,
         "embed_model": _EMBED_MODEL,
@@ -410,9 +430,15 @@ async def query(
     cf_account_id: str | None = None,
     cf_gateway_id: str | None = None,
     board: str | None = None,
+    provider: str = "openrouter",
+    openai_model: str | None = None,
     x_openrouter_key: Annotated[str | None, Header()] = None,
+    x_openai_key: Annotated[str | None, Header()] = None,
 ):
     x_openrouter_key = _resolve_key(x_openrouter_key)
+    openai_key = _resolve_openai_key(x_openai_key) if provider == "openai" else None
+    if provider == "openai":
+        do_rerank = False  # OpenAI has no rerank endpoint; skip in OpenAI mode
 
     demo_id = demo.lower()
     if demo_id == "french":
@@ -430,6 +456,7 @@ async def query(
         prompt_version=prompt_version,
         cf_account_id=cf_account_id, cf_gateway_id=cf_gateway_id,
         board=board, openrouter_key=x_openrouter_key,
+        provider=provider, openai_key=openai_key, openai_model=openai_model,
     )
 
     t0 = time.perf_counter()
@@ -437,6 +464,8 @@ async def query(
         messages=prep["messages"],
         model=prep["model"],
         openrouter_key=x_openrouter_key,
+        provider=provider,
+        openai_key=openai_key,
         account_id=cf_account_id,
         gateway_id=cf_gateway_id,
     )
@@ -468,9 +497,15 @@ async def query_stream(
     cf_account_id: str | None = None,
     cf_gateway_id: str | None = None,
     board: str | None = None,
+    provider: str = "openrouter",
+    openai_model: str | None = None,
     x_openrouter_key: Annotated[str | None, Header()] = None,
+    x_openai_key: Annotated[str | None, Header()] = None,
 ):
     x_openrouter_key = _resolve_key(x_openrouter_key)
+    openai_key = _resolve_openai_key(x_openai_key) if provider == "openai" else None
+    if provider == "openai":
+        do_rerank = False  # OpenAI has no rerank endpoint; skip in OpenAI mode
 
     demo_id = demo.lower()
     if demo_id == "french":
@@ -486,6 +521,7 @@ async def query_stream(
         prompt_version=prompt_version,
         cf_account_id=cf_account_id, cf_gateway_id=cf_gateway_id,
         board=board, openrouter_key=x_openrouter_key,
+        provider=provider, openai_key=openai_key, openai_model=openai_model,
     )
 
     async def event_stream():
@@ -507,6 +543,8 @@ async def query_stream(
                 messages=prep["messages"],
                 model=prep["model"],
                 openrouter_key=x_openrouter_key,
+                provider=provider,
+                openai_key=openai_key,
                 account_id=cf_account_id,
                 gateway_id=cf_gateway_id,
             ):

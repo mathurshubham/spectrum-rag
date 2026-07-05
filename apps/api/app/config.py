@@ -29,6 +29,8 @@ class Settings(BaseSettings):
 
     database_url: str
     openrouter_api_key: str = ""
+    openai_api_key: str = ""
+    openai_fast_model: str = "gpt-4o-mini"  # OpenAI-mode condense/HyDE model
     cf_account_id: str = ""
     cf_gateway_id: str = ""
     gen_model: str = "anthropic/claude-sonnet-4-5"
